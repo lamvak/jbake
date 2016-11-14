@@ -218,7 +218,7 @@ public class ConfigUtil {
 	        	LOGGER.warn(String.format("Usage of this file is being deprecated, please rename this file to: %s to remove this warning", CONFIG_FILE));
 	        	LEGACY_CONFIG_FILE_WARNING_SHOWN = true;
         	}
-            config.addConfiguration(new PropertiesConfiguration(customConfigFile));
+        	config.addConfiguration(new PropertiesConfiguration(customConfigFile));
         }
         customConfigFile = new File(source, CONFIG_FILE);
         if (customConfigFile.exists()) {
