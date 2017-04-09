@@ -1,6 +1,7 @@
-package org.jbake.app;
+package org.jbake.app.asset;
 
 import org.apache.commons.configuration.CompositeConfiguration;
+import org.jbake.app.ConfigUtil;
 
 import java.io.File;
 import java.util.List;

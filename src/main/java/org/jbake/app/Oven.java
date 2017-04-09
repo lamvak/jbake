@@ -2,6 +2,7 @@ package org.jbake.app;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ConfigUtil.Keys;
+import org.jbake.app.asset.Asset;
 import org.jbake.model.DocumentAttributes;
 import org.jbake.model.DocumentTypes;
 import org.jbake.render.RenderingTool;

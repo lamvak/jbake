@@ -1,4 +1,4 @@
-package org.jbake.app;
+package org.jbake.app.asset;
 
 import java.io.File;
 import java.util.Arrays;
