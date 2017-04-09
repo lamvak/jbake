@@ -1,16 +1,9 @@
 package org.jbake.app;
 
 import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -19,13 +12,11 @@ import java.util.List;
  * @author Jonathan Bullock <jonbullock@gmail.com>
  */
 public class Asset {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(Asset.class);
+	private final boolean ignoreHidden;
 
 	private File destination;
-	private final List<Throwable> errors = new LinkedList<Throwable>();
-	private final boolean ignoreHidden;
 	private String sourcePathFragment;
+	private ArrayList<Throwable> errors;
 
 	/**
 	 * Creates an instance of Asset.
@@ -42,57 +33,15 @@ public class Asset {
 	 * @param path The starting path
 	 */
 	public void copy(File path) {
-		File[] assetsFiles = listAssets(path);
-		if (assetsFiles != null) {
-			copyAssetsFrom(assetsFiles);
-		}
+		AssetDirectoryCopier assetDirectoryCopier = new AssetDirectoryCopier(path,
+				sourcePathFragment, destination, ignoreHidden);
+		assetDirectoryCopier.copyAsset();
+		errors = new ArrayList<>(assetDirectoryCopier.getErrors());
 	}
 
-	private void copyAssetsFrom(File[] assetFiles) {
-		Arrays.sort(assetFiles);
-		for (File assetFile : assetFiles) {
-			copyAssetFromFile(assetFile);
-		}
-	}
-
-	private void copyAssetFromFile(File assetFile) {
-		if (assetFile.isFile()) {
-			copyAssetFromActualFile(assetFile);
-		}
-		if (assetFile.isDirectory()) {
-			copy(assetFile);
-		}
-	}
-
-	private void copyAssetFromActualFile(File assetFile) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("Copying [")
-				.append(assetFile.getPath())
-				.append("]...");
-		File destFile = new File(assetFile.getPath().replace(sourcePathFragment, destination.getPath()));
-		try {
-			FileUtils.copyFile(assetFile, destFile);
-			sb.append("done!");
-			LOGGER.info(sb.toString());
-		} catch (IOException e) {
-			sb.append("failed!");
-			LOGGER.error(sb.toString(), e);
-			e.printStackTrace();
-			errors.add(e);
-		}
-	}
-
-	private File[] listAssets(File path) {
-		return path.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File file) {
-				return !ignoreHidden || !file.isHidden();
-			}
-		});
-	}
-
+	// why not concrete list of IOExceptions?
 	public List<Throwable> getErrors() {
-		return new ArrayList<Throwable>(errors);
+		return errors;
 	}
 
 }
