@@ -3,7 +3,7 @@ package org.jbake.render;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ContentStore;
 import org.jbake.app.DocumentList;
-import org.jbake.app.Renderer;
+import org.jbake.app.render.Renderer;
 import org.jbake.model.DocumentTypes;
 import org.jbake.template.RenderingException;
 

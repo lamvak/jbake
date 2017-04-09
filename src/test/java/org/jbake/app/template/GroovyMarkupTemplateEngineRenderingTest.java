@@ -4,7 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.jbake.app.Crawler;
 import org.jbake.app.DBUtil;
 import org.jbake.app.Parser;
-import org.jbake.app.Renderer;
+import org.jbake.app.render.Renderer;
 import org.jbake.model.DocumentTypes;
 import org.junit.Assert;
 import org.junit.Test;

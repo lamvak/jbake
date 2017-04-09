@@ -5,7 +5,7 @@ import java.io.File;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ConfigUtil.Keys;
 import org.jbake.app.ContentStore;
-import org.jbake.app.Renderer;
+import org.jbake.app.render.Renderer;
 import org.jbake.template.RenderingException;
 
 

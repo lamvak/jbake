@@ -30,7 +30,7 @@ import org.jbake.app.ContentStore;
 import org.jbake.app.Crawler;
 import org.jbake.app.DBUtil;
 import org.jbake.app.Parser;
-import org.jbake.app.Renderer;
+import org.jbake.app.render.Renderer;
 import org.jbake.model.DocumentTypes;
 import org.jbake.template.ModelExtractorsDocumentTypeListener;
 import org.junit.After;

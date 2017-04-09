@@ -1,16 +1,11 @@
 package org.jbake.render;
 
-import java.io.File;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ConfigUtil;
+import org.jbake.app.ConfigUtil.Keys;
 import org.jbake.app.ContentStore;
 import org.jbake.app.Crawler;
-import org.jbake.app.Renderer;
-import org.jbake.app.ConfigUtil.Keys;
+import org.jbake.app.render.Renderer;
 import org.jbake.template.DelegatingTemplateEngine;
 import org.junit.Before;
 import org.junit.Rule;
@@ -19,6 +14,12 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+
+import java.io.File;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith( MockitoJUnitRunner.class )
