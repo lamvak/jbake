@@ -1,29 +1,18 @@
 package org.jbake.app;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.LinkedList;
 
 public abstract class AssetCopier {
 	protected final File assetFile;
-	protected final String sourcePathPrefix;
-	protected final File destination;
-	protected boolean ignoreHidden;
+	protected final AssetCopyingContext copyingContext;
 
-	protected final LinkedList<IOException> errors = new LinkedList<>();
-
-	protected AssetCopier(File assetFile, String sourcePathPrefix, File destination, boolean
-			ignoreHidden) {
+	public AssetCopier(File assetFile, AssetCopyingContext copyingContext) {
 		this.assetFile = assetFile;
-		this.sourcePathPrefix = sourcePathPrefix;
-		this.destination = destination;
-		this.ignoreHidden = ignoreHidden;
+		this.copyingContext = copyingContext;
 	}
+
 	protected abstract void copy();
 
-	public LinkedList<IOException> getErrors() {
-		return errors;
-	}
 
 	public void copyAsset() {
 		if (currentFileShouldBeCopied()) {
@@ -32,6 +21,6 @@ public abstract class AssetCopier {
 	}
 
 	protected boolean currentFileShouldBeCopied() {
-		return !(ignoreHidden && assetFile.isHidden());
+		return !(copyingContext.isIgnoreHidden() && assetFile.isHidden());
 	}
 }

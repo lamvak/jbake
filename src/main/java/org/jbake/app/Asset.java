@@ -3,7 +3,6 @@ package org.jbake.app;
 import org.apache.commons.configuration.CompositeConfiguration;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,19 +11,19 @@ import java.util.List;
  * @author Jonathan Bullock <jonbullock@gmail.com>
  */
 public class Asset {
-	private final boolean ignoreHidden;
 
-	private File destination;
-	private String sourcePathFragment;
-	private ArrayList<Throwable> errors;
+	private final File source;
+	private final File destination;
+	private final CompositeConfiguration config;
+	private AssetCopyingContext copyingContext;
 
 	/**
 	 * Creates an instance of Asset.
 	 */
 	public Asset(File source, File destination, CompositeConfiguration config) {
+		this.source = source;
 		this.destination = destination;
-		ignoreHidden = config.getBoolean(ConfigUtil.Keys.ASSET_IGNORE_HIDDEN, false);
-		sourcePathFragment = source.getPath() + File.separator + config.getString(ConfigUtil.Keys.ASSET_FOLDER);
+		this.config = config;
 	}
 
 	/**
@@ -33,15 +32,19 @@ public class Asset {
 	 * @param path The starting path
 	 */
 	public void copy(File path) {
-		AssetDirectoryCopier assetDirectoryCopier = new AssetDirectoryCopier(path,
-				sourcePathFragment, destination, ignoreHidden);
+		createCopyingContext();
+		AssetDirectoryCopier assetDirectoryCopier = new AssetDirectoryCopier(path, copyingContext);
 		assetDirectoryCopier.copyAsset();
-		errors = new ArrayList<>(assetDirectoryCopier.getErrors());
 	}
 
 	// why not concrete list of IOExceptions?
 	public List<Throwable> getErrors() {
-		return errors;
+		return copyingContext.getErrors();
 	}
 
+	private void createCopyingContext() {
+		boolean ignoreHidden = config.getBoolean(ConfigUtil.Keys.ASSET_IGNORE_HIDDEN, false);
+		String sourcePathFragment = source.getPath() + File.separator + config.getString(ConfigUtil.Keys.ASSET_FOLDER);
+		copyingContext = new AssetCopyingContext(ignoreHidden, destination, sourcePathFragment);
+	}
 }

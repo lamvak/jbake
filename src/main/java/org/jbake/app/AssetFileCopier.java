@@ -11,14 +11,13 @@ class AssetFileCopier extends AssetCopier {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AssetFileCopier.class);
 	private StringBuilder sb;
 
-	AssetFileCopier(File assetFile, String sourcePathFragment, File destination, boolean
-			ignoreHidden) {
-		super(assetFile, sourcePathFragment, destination, ignoreHidden);
+	public AssetFileCopier(File assetFile, AssetCopyingContext copyingContext) {
+		super(assetFile, copyingContext);
 		sb = new StringBuilder();
 	}
 
 	@Override
-	public void copy() {
+	protected void copy() {
 		reportCopyingOfAssetFile();
 		tryCopyFile();
 	}
@@ -32,14 +31,9 @@ class AssetFileCopier extends AssetCopier {
 	}
 
 	private void copyFile() throws IOException {
-		FileUtils.copyFile(assetFile, destinationOfCopiedFile());
+		File destinationFile = copyingContext.getDestinationFor(assetFile);
+		FileUtils.copyFile(assetFile, destinationFile);
 		reportCopyOperationDone();
-	}
-
-	private File destinationOfCopiedFile() {
-		String sourcePath = assetFile.getPath();
-		String destinationPath = destination.getPath();
-		return new File(sourcePath.replace(sourcePathPrefix, destinationPath));
 	}
 
 	private void reportCopyingOfAssetFile() {
@@ -57,6 +51,6 @@ class AssetFileCopier extends AssetCopier {
 		sb.append("failed!");
 		LOGGER.error(sb.toString(), e);
 		e.printStackTrace();
-		errors.add(e);
+		copyingContext.addError(e);
 	}
 }
