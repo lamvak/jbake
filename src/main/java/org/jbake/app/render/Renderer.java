@@ -4,7 +4,6 @@ import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ConfigUtil;
 import org.jbake.app.ConfigUtil.Keys;
 import org.jbake.app.ContentStore;
-import org.jbake.app.Crawler;
 import org.jbake.app.Crawler.Attributes;
 import org.jbake.app.FileUtil;
 import org.jbake.template.DelegatingTemplateEngine;
@@ -21,6 +20,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.jbake.app.render.IndexPagination.NON_PAGINATE;
 import static org.jbake.app.render.IndexPagination.PAGINATE;
@@ -38,6 +38,9 @@ public class Renderer {
 	private final CompositeConfiguration config;
 	private final DelegatingTemplateEngine renderingEngine;
 	private final ContentStore db;
+
+	private String docType;
+	private String outputFilename;
 
 	/**
 	 * Creates a new instance of Renderer with supplied references to folders.
@@ -80,45 +83,98 @@ public class Renderer {
 	 *
 	 * @param content The content to renderDocument
 	 */
-	public void render(Map<String, Object> content) throws Exception {
-		String docType = (String) content.get(Crawler.Attributes.TYPE);
-		String outputFilename = destination.getPath() + File.separatorChar + content.get(Attributes.URI);
+	public void renderFrom(Map<String, Object> content) throws Exception {
+		prepareForRendering(content);
+		renderFile(content);
+	}
+
+	private void prepareForRendering(Map<String, Object> content) {
+		prepareRenderingData(content);
+		cleanupFilesBeforeRendering();
+		addDraftSuffixToOutputFilenameIfInDraftMode(content);
+	}
+
+	private void cleanupFilesBeforeRendering() {
+		deleteExistingDraftInCaseStatusChanged();
+		deletePublishedFileIfExists();
+	}
+
+	private void prepareRenderingData(Map<String, Object> content) {
+		prepareDocType(content);
+		prepareOutputFilename(content);
+	}
+
+	private void renderFile(Map<String, Object> content) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		File outputFile = prepareOutputFile();
+		tryRenderOutput(content, sb, outputFile);
+	}
+
+	private void tryRenderOutput(Map<String, Object> content, StringBuilder sb, File outputFile) throws Exception {
+		try (Writer out = createWriter(outputFile)) {
+			reportRenderingStart(sb, outputFile);
+			renderingEngine.renderDocument(prepareModelWithEngineAnd(content), findTemplateName(docType), out);
+			reportRenderingDone(sb);
+		} catch (Exception e) {
+			reportAndRaiseFailedRendering(sb, e, sb.toString(), "Failed to render file. Cause: " + e.getMessage());
+		}
+	}
+
+	private void reportAndRaiseFailedRendering(StringBuilder sb, Exception e, String s, String message) throws Exception {
+		sb.append("failed!");
+		LOGGER.error(s, e);
+		throw new Exception(message, e);
+	}
+
+	private void reportRenderingStart(StringBuilder sb, File outputFile) {
+		sb.append("Rendering [").append(outputFile).append("]... ");
+	}
+
+	private File prepareOutputFile() {
+		return new File(outputFilename + FileUtil.findExtension(config, docType));
+	}
+
+	private Map<String, Object> prepareModelWithEngineAnd(Map<String, Object> content) {
+		Map<String, Object> model = new HashMap<>();
+		model.put("content", content);
+		model.put("renderer", renderingEngine);
+		return model;
+	}
+
+	private void reportRenderingDone(StringBuilder sb) {
+		sb.append("done!");
+		LOGGER.info(sb.toString());
+	}
+
+	private void addDraftSuffixToOutputFilenameIfInDraftMode(Map<String, Object> content) {
+		if (content.get(Attributes.STATUS).equals(Attributes.Status.DRAFT)) {
+			outputFilename = outputFilename + config.getString(Keys.DRAFT_SUFFIX);
+		}
+	}
+
+	private void prepareOutputFilename(Map<String, Object> content) {
+		outputFilename = destination.getPath() + File.separatorChar + content.get(Attributes.URI);
 		if (outputFilename.lastIndexOf(".") > outputFilename.lastIndexOf(File.separatorChar)) {
 			outputFilename = outputFilename.substring(0, outputFilename.lastIndexOf("."));
 		}
+	}
 
-		// delete existing versions if they exist in case status has changed either way
-		File draftFile = new File(outputFilename + config.getString(Keys.DRAFT_SUFFIX) + FileUtil.findExtension(config, docType));
+	private void prepareDocType(Map<String, Object> content) {
+		docType = (String) content.get(Attributes.TYPE);
+	}
+
+	private void deletePublishedFileIfExists() {
+		deleteFileIfExists(outputFilename + FileUtil.findExtension(config, docType));
+	}
+
+	private void deleteExistingDraftInCaseStatusChanged() {
+		deleteFileIfExists(outputFilename + config.getString(Keys.DRAFT_SUFFIX) + FileUtil.findExtension(config, docType));
+	}
+
+	private void deleteFileIfExists(String pathName) {
+		File draftFile = new File(pathName);
 		if (draftFile.exists()) {
 			draftFile.delete();
-		}
-
-		File publishedFile = new File(outputFilename + FileUtil.findExtension(config, docType));
-		if (publishedFile.exists()) {
-			publishedFile.delete();
-		}
-
-		if (content.get(Crawler.Attributes.STATUS).equals(Crawler.Attributes.Status.DRAFT)) {
-			outputFilename = outputFilename + config.getString(Keys.DRAFT_SUFFIX);
-		}
-
-		File outputFile = new File(outputFilename + FileUtil.findExtension(config, docType));
-		StringBuilder sb = new StringBuilder();
-		sb.append("Rendering [").append(outputFile).append("]... ");
-		Map<String, Object> model = new HashMap<String, Object>();
-		model.put("content", content);
-		model.put("renderer", renderingEngine);
-
-		try {
-			Writer out = createWriter(outputFile);
-			renderingEngine.renderDocument(model, findTemplateName(docType), out);
-			out.close();
-			sb.append("done!");
-			LOGGER.info(sb.toString());
-		} catch (Exception e) {
-			sb.append("failed!");
-			LOGGER.error(sb.toString(), e);
-			throw new Exception("Failed to render file. Cause: " + e.getMessage(), e);
 		}
 	}
 
@@ -131,22 +187,24 @@ public class Renderer {
 		return new OutputStreamWriter(new FileOutputStream(file), config.getString(ConfigUtil.Keys.RENDER_ENCODING));
 	}
 
-	private void render(RenderingConfig renderConfig) throws Exception {
+	private void renderFrom(RenderingConfig renderConfig) throws Exception {
 		File outputFile = renderConfig.getPath();
 		StringBuilder sb = new StringBuilder();
-		sb.append("Rendering ").append(renderConfig.getName()).append(" [").append(outputFile).append("]...");
+		reportRenderingStart(renderConfig, outputFile, sb);
+		tryRenderFromConfig(renderConfig, outputFile, sb);
+	}
 
-		try {
-			Writer out = createWriter(outputFile);
+	private void tryRenderFromConfig(RenderingConfig renderConfig, File outputFile, StringBuilder sb) throws Exception {
+		try (Writer out = createWriter(outputFile)) {
 			renderingEngine.renderDocument(renderConfig.getModel(), renderConfig.getTemplate(), out);
-			out.close();
-			sb.append("done!");
-			LOGGER.info(sb.toString());
+			reportRenderingDone(sb);
 		} catch (Exception e) {
-			sb.append("failed!");
-			LOGGER.error(sb.toString(), e);
-			throw new Exception("Failed to render " + renderConfig.getName(), e);
+			reportAndRaiseFailedRendering(sb, e, sb.toString(), "Failed to render " + renderConfig.getName());
 		}
+	}
+
+	private void reportRenderingStart(RenderingConfig renderConfig, File outputFile, StringBuilder sb) {
+		sb.append("Rendering ").append(renderConfig.getName()).append(" [").append(outputFile).append("]...");
 	}
 
 	/**
@@ -155,61 +213,95 @@ public class Renderer {
 	 * @param indexFile The name of the output file
 	 */
 	public void renderIndex(String indexFile) throws Exception {
-		String allInOneName = "masterindex";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + indexFile),
+		renderFrom(defaultRenderingContextFor(indexFile, "masterindex"));
+	}
+
+	private DefaultRenderingConfig defaultRenderingContextFor(String indexFile, String allInOneName) {
+		return new DefaultRenderingConfig(
+				filePath(indexFile),
 				allInOneName,
 				findTemplateName(allInOneName),
 				buildSimpleModel(allInOneName),
 				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+				shouldIndexBePaginated());
+	}
+
+	private File filePath(String indexFile) {
+		return new File(getDestination().getPath() + File.separator + indexFile);
+	}
+
+	private IndexPagination shouldIndexBePaginated() {
+		return getConfig().containsKey(Keys.PAGINATE_INDEX) && getConfig().getBoolean
+				(Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE;
 	}
 
 	public void renderIndexPaging(String indexFile) throws Exception {
 		long totalPosts = db.getPublishedCount("post");
-		int postsPerPage = config.getInt(Keys.POSTS_PER_PAGE, 5);
-
 		if (totalPosts == 0) {
-			//paging makes no sense. render single index file instead
 			renderIndex(indexFile);
 		} else {
-
+			int postsPerPage = config.getInt(Keys.POSTS_PER_PAGE, 5);
 			PagingHelper pagingHelper = new PagingHelper(totalPosts, postsPerPage);
-
-			Map<String, Object> model = new HashMap<String, Object>();
-			model.put("renderer", renderingEngine);
-			model.put("content", buildSimpleModel("masterindex"));
-			model.put("numberOfPages", pagingHelper.getNumberOfPages());
-
+			Map<String, Object> model = prepareModelForIndexPaging(pagingHelper);
 			db.setLimit(postsPerPage);
-
-			try {
-
-				for (int pageStart = 0, page = 1; pageStart < totalPosts; pageStart += postsPerPage, page++) {
-					String fileName = indexFile;
-
-					db.setStart(pageStart);
-					model.put("currentPageNumber", page);
-					String previous = pagingHelper.getPreviousFileName(page, fileName);
-					model.put("previousFileName", previous);
-					String nextFileName = pagingHelper.getNextFileName(page, fileName);
-					model.put("nextFileName", nextFileName);
-
-					// Add page number to file name
-					fileName = pagingHelper.getCurrentFileName(page, fileName);
-					ModelRenderingConfig renderConfig = new ModelRenderingConfig(
-							new File(getDestination().getPath() + File.separator + fileName),
-							fileName,
-							findTemplateName("masterindex"),
-							model);
-					render(renderConfig);
-				}
-				db.resetPagination();
-			} catch (Exception e) {
-				throw new Exception("Failed to render index. Cause: " + e.getMessage(), e);
-			}
+			tryRenderPagedIndex(indexFile, totalPosts, postsPerPage, pagingHelper, model);
 		}
+	}
+
+	private void tryRenderPagedIndex(String indexFile, long totalPosts, int postsPerPage, PagingHelper pagingHelper, Map<String, Object> model) throws Exception {
+		try {
+			renderPagedIndex(indexFile, totalPosts, postsPerPage, pagingHelper, model);
+		} catch (Exception e) {
+			throw new Exception("Failed to render index. Cause: " + e.getMessage(), e);
+		}
+	}
+
+	private void renderPagedIndex(String indexFile, long totalPosts, int postsPerPage, PagingHelper pagingHelper, Map<String, Object> model) throws Exception {
+		for (int pageStart = 0, page = 1; pageStart < totalPosts; pageStart += postsPerPage, page++) {
+			renderPageOfPagedIndex(indexFile, pagingHelper, model, pageStart, page);
+		}
+		db.resetPagination();
+	}
+
+	private void renderPageOfPagedIndex(String indexFile, PagingHelper pagingHelper, Map<String, Object> model, int pageStart, int page) throws Exception {
+		refreshPage(indexFile, pagingHelper, model, pageStart, page);
+		ModelRenderingConfig renderConfig = renderingModelConfigForMasterIndex(model,
+				addPageNumberToFileName(pagingHelper, page, indexFile));
+		renderFrom(renderConfig);
+	}
+
+	private void refreshPage(String indexFile, PagingHelper pagingHelper, Map<String, Object> model, int pageStart, int page) {
+		db.setStart(pageStart);
+		refreshModelPageState(pagingHelper, model, page, indexFile);
+	}
+
+	private ModelRenderingConfig renderingModelConfigForMasterIndex(Map<String, Object> model, String fileName) {
+		return new ModelRenderingConfig(
+				filePath(fileName),
+				fileName,
+				findTemplateName("masterindex"),
+				model);
+	}
+
+	private String addPageNumberToFileName(PagingHelper pagingHelper, int page, String fileName) {
+		fileName = pagingHelper.getCurrentFileName(page, fileName);
+		return fileName;
+	}
+
+	private void refreshModelPageState(PagingHelper pagingHelper, Map<String, Object> model, int page, String fileName) {
+		model.put("currentPageNumber", page);
+		String previous = pagingHelper.getPreviousFileName(page, fileName);
+		model.put("previousFileName", previous);
+		String nextFileName = pagingHelper.getNextFileName(page, fileName);
+		model.put("nextFileName", nextFileName);
+	}
+
+	private Map<String, Object> prepareModelForIndexPaging(PagingHelper pagingHelper) {
+		Map<String, Object> model = new HashMap<String, Object>();
+		model.put("renderer", renderingEngine);
+		model.put("content", buildSimpleModel("masterindex"));
+		model.put("numberOfPages", pagingHelper.getNumberOfPages());
+		return model;
 	}
 
 	/**
@@ -221,14 +313,7 @@ public class Renderer {
 	 */
 	public void renderSitemap(String sitemapFile) throws Exception {
 		String allInOneName = "sitemap";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + sitemapFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+		renderFrom(defaultRenderingContextFor(sitemapFile, allInOneName));
 
 	}
 
@@ -239,14 +324,7 @@ public class Renderer {
 	 */
 	public void renderFeed(String feedFile) throws Exception {
 		String allInOneName = "feed";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + feedFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+		renderFrom(defaultRenderingContextFor(feedFile, allInOneName));
 
 	}
 
@@ -257,14 +335,7 @@ public class Renderer {
 	 */
 	public void renderArchive(String archiveFile) throws Exception {
 		String allInOneName = "archive";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + archiveFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+		renderFrom(defaultRenderingContextFor(archiveFile, allInOneName));
 
 	}
 
@@ -274,38 +345,66 @@ public class Renderer {
 	 * @param tagPath The output path
 	 */
 	public int renderTags(String tagPath) throws Exception {
-		int renderedCount = 0;
-		final List<Throwable> errors = new LinkedList<>();
-		for (String tag : db.getAllTags()) {
-			try {
-				Map<String, Object> model = new HashMap<>();
-				model.put("renderer", renderingEngine);
-				model.put(Attributes.TAG, tag);
-				Map<String, Object> map = buildSimpleModel(Attributes.TAG);
-				map.put(Attributes.ROOTPATH, "../");
-				model.put("content", map);
+		Set<String> tags = db.getAllTags();
+		renderTags(tagPath, tags);
+		return tags.size();
+	}
 
-				File path = new File(destination.getPath() + File.separator + tagPath + File.separator + tag + config.getString(Keys.OUTPUT_EXTENSION));
-				render(new ModelRenderingConfig(
-						path,
-						Attributes.TAG,
-						findTemplateName(Attributes.TAG),
-						model));
-				renderedCount++;
-			} catch (Exception e) {
-				errors.add(e);
-			}
+	private void renderTags(String tagPath, Set<String> tags) throws Exception {
+		final List<Throwable> errors = new LinkedList<>();
+		for (String tag : tags) {
+			tryRenderTag(tagPath, errors, tag);
 		}
+		reportAndRethrowErrors(errors);
+	}
+
+	private void tryRenderTag(String tagPath, List<Throwable> errors, String tag) {
+		try {
+			renderTag(tagPath, tag);
+		} catch (Exception e) {
+			errors.add(e);
+		}
+	}
+
+	private void renderTag(String tagPath, String tag) throws Exception {
+		Map<String, Object> model = prepareModelForTagsRendering(tag);
+		renderFrom(modelConfigForRenderingTag(tagPath, tag, model));
+	}
+
+	private ModelRenderingConfig modelConfigForRenderingTag(String tagPath, String tag, Map<String, Object> model) {
+		return new ModelRenderingConfig(
+				tagOutputFile(tagPath, tag),
+				Attributes.TAG,
+				findTemplateName(Attributes.TAG),
+				model);
+	}
+
+	private File tagOutputFile(String tagPath, String tag) {
+		return new File(destination.getPath() + File.separator + tagPath + File.separator + tag + config.getString(Keys.OUTPUT_EXTENSION));
+	}
+
+	private void reportAndRethrowErrors(List<Throwable> errors) throws Exception {
 		if (!errors.isEmpty()) {
-			StringBuilder sb = new StringBuilder();
-			sb.append("Failed to render tags. Cause(s):");
+			StringBuilder sb = new StringBuilder("Failed to render tags. Cause(s):");
 			for (Throwable error : errors) {
 				sb.append("\n").append(error.getMessage());
 			}
 			throw new Exception(sb.toString(), errors.get(0));
-		} else {
-			return renderedCount;
 		}
+	}
+
+	private Map<String, Object> prepareModelForTagsRendering(String tag) {
+		Map<String, Object> model = new HashMap<>();
+		model.put("renderer", renderingEngine);
+		model.put(Attributes.TAG, tag);
+		model.put("content", buildContentForTagRendering());
+		return model;
+	}
+
+	private Map<String, Object> buildContentForTagRendering() {
+		Map<String, Object> map = buildSimpleModel(Attributes.TAG);
+		map.put(Attributes.ROOTPATH, "../");
+		return map;
 	}
 
 	/**

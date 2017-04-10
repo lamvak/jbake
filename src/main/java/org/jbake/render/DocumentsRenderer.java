@@ -22,7 +22,7 @@ public class DocumentsRenderer implements RenderingTool {
             DocumentList documentList = db.getUnrenderedContent(docType);
             for (Map<String, Object> page : documentList) {
                 try {
-                    renderer.render(page);
+                    renderer.renderFrom(page);
                     renderedCount++;
                 } catch (Exception e) {
                     errors.add(e.getMessage());

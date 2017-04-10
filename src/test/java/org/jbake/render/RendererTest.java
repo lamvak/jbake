@@ -62,7 +62,7 @@ public class RendererTest {
 		content.put(Crawler.Attributes.URI, "/" + FOLDER + "/" + FILENAME);
 		content.put(Crawler.Attributes.STATUS, "published");
 		
-		renderer.render(content);
+		renderer.renderFrom(content);
 		
 		File outputFile = new File(outputPath.getAbsolutePath() + File.separatorChar + FOLDER + File.separatorChar + FILENAME);
 		assertThat(outputFile).isFile();

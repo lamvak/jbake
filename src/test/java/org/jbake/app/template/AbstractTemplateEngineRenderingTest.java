@@ -178,7 +178,7 @@ public abstract class AbstractTemplateEngineRenderingTest {
                 + File.separator + "blog" + File.separator + "2013" + File.separator + filename);
         Map<String, Object> content = parser.processFile(sampleFile);
         content.put(Crawler.Attributes.URI, "/" + filename);
-        renderer.render(content);
+        renderer.renderFrom(content);
         File outputFile = new File(destinationFolder, filename);
         Assert.assertTrue(outputFile.exists());
 
@@ -197,7 +197,7 @@ public abstract class AbstractTemplateEngineRenderingTest {
         File sampleFile = new File(sourceFolder.getPath() + File.separator + "content" + File.separator + filename);
         Map<String, Object> content = parser.processFile(sampleFile);
         content.put(Crawler.Attributes.URI, "/" + filename);
-        renderer.render(content);
+        renderer.renderFrom(content);
         File outputFile = new File(destinationFolder, filename);
         Assert.assertTrue(outputFile.exists());
 

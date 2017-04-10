@@ -95,7 +95,7 @@ public class DocumentsRendererTest {
         documentList.add(document2);
 
         // throw an exception for every call of renderer's render method
-        doThrow(new Exception(fakeExceptionMessage)).when(renderer).render(anyMap());
+        doThrow(new Exception(fakeExceptionMessage)).when(renderer).renderFrom(anyMap());
         when(db.getUnrenderedContent(anyString())).thenReturn(emptyDocumentList);
         when(db.getUnrenderedContent("customType")).thenReturn(documentList);
 

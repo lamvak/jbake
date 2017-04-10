@@ -23,17 +23,23 @@ class DefaultRenderingConfig extends AbstractRenderingConfig {
 	@Override
 	public Map<String, Object> getModel() {
 		Map<String, Object> model = new HashMap<>();
+		fillInModelValues(model);
+		return model;
+	}
+
+	private void fillInModelValues(Map<String, Object> model) {
 		model.put("renderer", engine);
 		model.put("content", content);
+		applyAsRequiredIndexPaginationTo(model);
+	}
 
+	private void applyAsRequiredIndexPaginationTo(Map<String, Object> model) {
 		if (indexPagination.shouldBeApplied()) {
 			model.put("numberOfPages", 0);
 			model.put("currentPageNumber", 0);
 			model.put("previousFileName", "");
 			model.put("nextFileName", "");
 		}
-
-		return model;
 	}
 
 }
