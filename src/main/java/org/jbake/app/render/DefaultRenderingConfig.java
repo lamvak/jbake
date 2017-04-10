@@ -1,29 +1,32 @@
 package org.jbake.app.render;
 
-import org.jbake.app.ConfigUtil;
+import org.jbake.template.DelegatingTemplateEngine;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 class DefaultRenderingConfig extends AbstractRenderingConfig {
-	private Renderer renderer;
-	private final Object content;
 
-	public DefaultRenderingConfig(Renderer renderer, String filename, String allInOneName) {
-		super(new File(renderer.getDestination().getPath() + File.separator + filename), allInOneName, renderer
-				.findTemplateName(allInOneName));
-		this.renderer = renderer;
-		this.content = renderer.buildSimpleModel(allInOneName);
+	private final Object content;
+	private DelegatingTemplateEngine engine;
+	private IndexPagination indexPagination;
+
+	public DefaultRenderingConfig(File path, String name, String template, Object content,
+																DelegatingTemplateEngine engine, IndexPagination indexPagination) {
+		super(path, name, template);
+		this.content = content;
+		this.engine = engine;
+		this.indexPagination = indexPagination;
 	}
 
 	@Override
 	public Map<String, Object> getModel() {
-		Map<String, Object> model = new HashMap<String, Object>();
-		model.put("renderer", renderer.getRenderingEngine());
+		Map<String, Object> model = new HashMap<>();
+		model.put("renderer", engine);
 		model.put("content", content);
 
-		if (renderer.getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && renderer.getConfig().getBoolean(ConfigUtil.Keys.PAGINATE_INDEX)) {
+		if (indexPagination.shouldBeApplied()) {
 			model.put("numberOfPages", 0);
 			model.put("currentPageNumber", 0);
 			model.put("previousFileName", "");

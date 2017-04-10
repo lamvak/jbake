@@ -22,6 +22,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static org.jbake.app.render.IndexPagination.NON_PAGINATE;
+import static org.jbake.app.render.IndexPagination.PAGINATE;
+
 /**
  * Render output to a file.
  *
@@ -152,8 +155,15 @@ public class Renderer {
 	 * @param indexFile The name of the output file
 	 */
 	public void renderIndex(String indexFile) throws Exception {
-
-		render(new DefaultRenderingConfig(this, indexFile, "masterindex"));
+		String allInOneName = "masterindex";
+		render(new DefaultRenderingConfig(
+				new File(getDestination().getPath() + File.separator + indexFile),
+				allInOneName,
+				findTemplateName(allInOneName),
+				buildSimpleModel(allInOneName),
+				getRenderingEngine(),
+				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
+						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
 	}
 
 	public void renderIndexPaging(String indexFile) throws Exception {
@@ -188,7 +198,11 @@ public class Renderer {
 
 					// Add page number to file name
 					fileName = pagingHelper.getCurrentFileName(page, fileName);
-					ModelRenderingConfig renderConfig = new ModelRenderingConfig(this, fileName, model, "masterindex");
+					ModelRenderingConfig renderConfig = new ModelRenderingConfig(
+							new File(getDestination().getPath() + File.separator + fileName),
+							fileName,
+							findTemplateName("masterindex"),
+							model);
 					render(renderConfig);
 				}
 				db.resetPagination();
@@ -206,7 +220,16 @@ public class Renderer {
 	 * @see <a href="http://www.sitemaps.org/">Sitemap protocol</a>
 	 */
 	public void renderSitemap(String sitemapFile) throws Exception {
-		render(new DefaultRenderingConfig(this, sitemapFile, "sitemap"));
+		String allInOneName = "sitemap";
+		render(new DefaultRenderingConfig(
+				new File(getDestination().getPath() + File.separator + sitemapFile),
+				allInOneName,
+				findTemplateName(allInOneName),
+				buildSimpleModel(allInOneName),
+				getRenderingEngine(),
+				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
+						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+
 	}
 
 	/**
@@ -215,7 +238,16 @@ public class Renderer {
 	 * @param feedFile The name of the output file
 	 */
 	public void renderFeed(String feedFile) throws Exception {
-		render(new DefaultRenderingConfig(this, feedFile, "feed"));
+		String allInOneName = "feed";
+		render(new DefaultRenderingConfig(
+				new File(getDestination().getPath() + File.separator + feedFile),
+				allInOneName,
+				findTemplateName(allInOneName),
+				buildSimpleModel(allInOneName),
+				getRenderingEngine(),
+				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
+						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+
 	}
 
 	/**
@@ -224,7 +256,16 @@ public class Renderer {
 	 * @param archiveFile The name of the output file
 	 */
 	public void renderArchive(String archiveFile) throws Exception {
-		render(new DefaultRenderingConfig(this, archiveFile, "archive"));
+		String allInOneName = "archive";
+		render(new DefaultRenderingConfig(
+				new File(getDestination().getPath() + File.separator + archiveFile),
+				allInOneName,
+				findTemplateName(allInOneName),
+				buildSimpleModel(allInOneName),
+				getRenderingEngine(),
+				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
+						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
+
 	}
 
 	/**
@@ -234,10 +275,10 @@ public class Renderer {
 	 */
 	public int renderTags(String tagPath) throws Exception {
 		int renderedCount = 0;
-		final List<Throwable> errors = new LinkedList<Throwable>();
+		final List<Throwable> errors = new LinkedList<>();
 		for (String tag : db.getAllTags()) {
 			try {
-				Map<String, Object> model = new HashMap<String, Object>();
+				Map<String, Object> model = new HashMap<>();
 				model.put("renderer", renderingEngine);
 				model.put(Attributes.TAG, tag);
 				Map<String, Object> map = buildSimpleModel(Attributes.TAG);
@@ -245,7 +286,11 @@ public class Renderer {
 				model.put("content", map);
 
 				File path = new File(destination.getPath() + File.separator + tagPath + File.separator + tag + config.getString(Keys.OUTPUT_EXTENSION));
-				render(new ModelRenderingConfig(path, Attributes.TAG, model, findTemplateName(Attributes.TAG)));
+				render(new ModelRenderingConfig(
+						path,
+						Attributes.TAG,
+						findTemplateName(Attributes.TAG),
+						model));
 				renderedCount++;
 			} catch (Exception e) {
 				errors.add(e);

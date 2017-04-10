@@ -8,7 +8,6 @@ abstract class AbstractRenderingConfig implements RenderingConfig {
 	protected final String template;
 
 	public AbstractRenderingConfig(File path, String name, String template) {
-		super();
 		this.path = path;
 		this.name = name;
 		this.template = template;

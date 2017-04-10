@@ -6,12 +6,7 @@ import java.util.Map;
 public class ModelRenderingConfig extends AbstractRenderingConfig {
 	private final Map<String, Object> model;
 
-	public ModelRenderingConfig(Renderer renderer, String fileName, Map<String, Object> model, String templateType) {
-		super(new File(renderer.getDestination().getPath() + File.separator + fileName), fileName, renderer.findTemplateName(templateType));
-		this.model = model;
-	}
-
-	public ModelRenderingConfig(File path, String name, Map<String, Object> model, String template) {
+	public ModelRenderingConfig(File path, String name, String template, Map<String, Object> model) {
 		super(path, name, template);
 		this.model = model;
 	}
