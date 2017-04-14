@@ -2,91 +2,88 @@ package org.jbake.render;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ContentStore;
-import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.render.support.MockCompositeConfiguration;
 import org.jbake.template.RenderingException;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class FeedRendererTest {
+	private FeedRenderer renderer;
+	private CompositeConfiguration configuration;
+	private ContentStore contentStore;
+	private RendererFactory mockFactory;
+	private org.jbake.app.render.FeedRenderer mockFeedRenderer;
 
-    @Test
-    public void returnsZeroWhenConfigDoesNotRenderFeeds() throws RenderingException {
-        FeedRenderer renderer = new FeedRenderer();
+	@Test
+	public void returnsZeroWhenConfigDoesNotRenderFeeds() throws RenderingException {
+		int renderResponse = renderer.render(mockFactory, configuration);
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
+		assertThat(renderResponse).isEqualTo(0);
+	}
 
-        Renderer mockRenderer = mock(Renderer.class);
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+	@Test
+	public void doesNotRenderWhenConfigDoesNotRenderFeeds() throws Exception {
+		renderer.render(mockFactory, configuration);
 
-        assertThat(renderResponse).isEqualTo(0);
-    }
+		verify(mockFeedRenderer, never()).renderFeed(anyString());
+	}
 
-    @Test
-    public void doesNotRenderWhenConfigDoesNotRenderFeeds() throws Exception {
-        FeedRenderer renderer = new FeedRenderer();
+	@Test
+	public void returnsOneWhenConfigRendersFeeds() throws RenderingException {
+		configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+		when(mockFeedRenderer.getConfig()).thenReturn(configuration);
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+		int renderResponse = renderer.render(mockFactory, configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+		assertThat(renderResponse).isEqualTo(1);
+	}
 
-        verify(mockRenderer, never()).renderFeed(anyString());
-    }
+	@Test
+	public void doesRenderWhenConfigDoesNotRenderFeeds() throws Exception {
+		configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+		when(mockFeedRenderer.getConfig()).thenReturn(configuration);
 
-    @Test
-    public void returnsOneWhenConfigRendersFeeds() throws RenderingException {
-        FeedRenderer renderer = new FeedRenderer();
+		renderer.render(mockFactory, configuration);
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
+		verify(mockFeedRenderer, times(1)).renderFeed("random string");
+	}
 
-        Renderer mockRenderer = mock(Renderer.class);
+	@Test(expected = RenderingException.class)
+	public void propogatesRenderingException() throws Exception {
+		configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+		when(mockFeedRenderer.getConfig()).thenReturn(configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+		doThrow(new Exception()).when(mockFeedRenderer).renderFeed(anyString());
 
-        assertThat(renderResponse).isEqualTo(1);
-    }
+		renderer.render(mockFactory, configuration);
 
-    @Test
-    public void doesRenderWhenConfigDoesNotRenderFeeds() throws Exception {
-        FeedRenderer renderer = new FeedRenderer();
+		verify(mockFeedRenderer, never()).renderFeed("random string");
+	}
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+	@Before
+	public void setup() {
+		renderer = new FeedRenderer();
+		mockFeedRenderer = mock(org.jbake.app.render.FeedRenderer.class);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+		configuration = new MockCompositeConfiguration().withDefaultBoolean(false);
+		when(mockFeedRenderer.getConfig()).thenReturn(configuration);
 
-        verify(mockRenderer, times(1)).renderFeed("random string");
-    }
+		contentStore = mock(ContentStore.class);
+		when(mockFeedRenderer.getDb()).thenReturn(contentStore);
 
-    @Test(expected = RenderingException.class)
-    public void propogatesRenderingException() throws Exception {
-        FeedRenderer renderer = new FeedRenderer();
-
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
-
-        doThrow(new Exception()).when(mockRenderer).renderFeed(anyString());
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, never()).renderFeed("random string");
-    }
-
+		mockFactory = mock(RendererFactory.class);
+		when(mockFactory.feedRenderer()).thenReturn(mockFeedRenderer);
+	}
 }
 
 

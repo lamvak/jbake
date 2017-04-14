@@ -8,7 +8,6 @@ import org.jbake.app.Crawler;
 import org.jbake.app.Crawler.Attributes;
 import org.jbake.app.FileUtil;
 import org.jbake.template.DelegatingTemplateEngine;
-import org.jbake.util.PagingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,12 +17,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-
-import static org.jbake.app.render.IndexPagination.NON_PAGINATE;
-import static org.jbake.app.render.IndexPagination.PAGINATE;
 
 /**
  * Render output to a file.
@@ -131,7 +125,7 @@ public class Renderer {
 		return new OutputStreamWriter(new FileOutputStream(file), config.getString(ConfigUtil.Keys.RENDER_ENCODING));
 	}
 
-	private void render(RenderingConfig renderConfig) throws Exception {
+	void render(RenderingConfig renderConfig) throws Exception {
 		File outputFile = renderConfig.getPath();
 		StringBuilder sb = new StringBuilder();
 		sb.append("Rendering ").append(renderConfig.getName()).append(" [").append(outputFile).append("]...");
@@ -146,165 +140,6 @@ public class Renderer {
 			sb.append("failed!");
 			LOGGER.error(sb.toString(), e);
 			throw new Exception("Failed to render " + renderConfig.getName(), e);
-		}
-	}
-
-	/**
-	 * Render an index file using the supplied content.
-	 *
-	 * @param indexFile The name of the output file
-	 */
-	public void renderIndex(String indexFile) throws Exception {
-		String allInOneName = "masterindex";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + indexFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
-	}
-
-	public void renderIndexPaging(String indexFile) throws Exception {
-		long totalPosts = db.getPublishedCount("post");
-		int postsPerPage = config.getInt(Keys.POSTS_PER_PAGE, 5);
-
-		if (totalPosts == 0) {
-			//paging makes no sense. render single index file instead
-			renderIndex(indexFile);
-		} else {
-
-			PagingHelper pagingHelper = new PagingHelper(totalPosts, postsPerPage);
-
-			Map<String, Object> model = new HashMap<String, Object>();
-			model.put("renderer", renderingEngine);
-			model.put("content", buildSimpleModel("masterindex"));
-			model.put("numberOfPages", pagingHelper.getNumberOfPages());
-
-			db.setLimit(postsPerPage);
-
-			try {
-
-				for (int pageStart = 0, page = 1; pageStart < totalPosts; pageStart += postsPerPage, page++) {
-					String fileName = indexFile;
-
-					db.setStart(pageStart);
-					model.put("currentPageNumber", page);
-					String previous = pagingHelper.getPreviousFileName(page, fileName);
-					model.put("previousFileName", previous);
-					String nextFileName = pagingHelper.getNextFileName(page, fileName);
-					model.put("nextFileName", nextFileName);
-
-					// Add page number to file name
-					fileName = pagingHelper.getCurrentFileName(page, fileName);
-					ModelRenderingConfig renderConfig = new ModelRenderingConfig(
-							new File(getDestination().getPath() + File.separator + fileName),
-							fileName,
-							findTemplateName("masterindex"),
-							model);
-					render(renderConfig);
-				}
-				db.resetPagination();
-			} catch (Exception e) {
-				throw new Exception("Failed to render index. Cause: " + e.getMessage(), e);
-			}
-		}
-	}
-
-	/**
-	 * Render an XML sitemap file using the supplied content.
-	 *
-	 * @see <a href="https://support.google.com/webmasters/answer/156184?hl=en&ref_topic=8476">About
-	 * Sitemaps</a>
-	 * @see <a href="http://www.sitemaps.org/">Sitemap protocol</a>
-	 */
-	public void renderSitemap(String sitemapFile) throws Exception {
-		String allInOneName = "sitemap";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + sitemapFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
-
-	}
-
-	/**
-	 * Render an XML feed file using the supplied content.
-	 *
-	 * @param feedFile The name of the output file
-	 */
-	public void renderFeed(String feedFile) throws Exception {
-		String allInOneName = "feed";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + feedFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
-
-	}
-
-	/**
-	 * Render an archive file using the supplied content.
-	 *
-	 * @param archiveFile The name of the output file
-	 */
-	public void renderArchive(String archiveFile) throws Exception {
-		String allInOneName = "archive";
-		render(new DefaultRenderingConfig(
-				new File(getDestination().getPath() + File.separator + archiveFile),
-				allInOneName,
-				findTemplateName(allInOneName),
-				buildSimpleModel(allInOneName),
-				getRenderingEngine(),
-				getConfig().containsKey(ConfigUtil.Keys.PAGINATE_INDEX) && getConfig().getBoolean
-						(ConfigUtil.Keys.PAGINATE_INDEX) ? PAGINATE : NON_PAGINATE));
-
-	}
-
-	/**
-	 * Render tag files using the supplied content.
-	 *
-	 * @param tagPath The output path
-	 */
-	public int renderTags(String tagPath) throws Exception {
-		int renderedCount = 0;
-		final List<Throwable> errors = new LinkedList<>();
-		for (String tag : db.getAllTags()) {
-			try {
-				Map<String, Object> model = new HashMap<>();
-				model.put("renderer", renderingEngine);
-				model.put(Attributes.TAG, tag);
-				Map<String, Object> map = buildSimpleModel(Attributes.TAG);
-				map.put(Attributes.ROOTPATH, "../");
-				model.put("content", map);
-
-				File path = new File(destination.getPath() + File.separator + tagPath + File.separator + tag + config.getString(Keys.OUTPUT_EXTENSION));
-				render(new ModelRenderingConfig(
-						path,
-						Attributes.TAG,
-						findTemplateName(Attributes.TAG),
-						model));
-				renderedCount++;
-			} catch (Exception e) {
-				errors.add(e);
-			}
-		}
-		if (!errors.isEmpty()) {
-			StringBuilder sb = new StringBuilder();
-			sb.append("Failed to render tags. Cause(s):");
-			for (Throwable error : errors) {
-				sb.append("\n").append(error.getMessage());
-			}
-			throw new Exception(sb.toString(), errors.get(0));
-		} else {
-			return renderedCount;
 		}
 	}
 
@@ -329,5 +164,9 @@ public class Renderer {
 
 	public DelegatingTemplateEngine getRenderingEngine() {
 		return renderingEngine;
+	}
+
+	public ContentStore getDb() {
+		return db;
 	}
 }

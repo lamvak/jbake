@@ -30,7 +30,12 @@ import org.jbake.app.ContentStore;
 import org.jbake.app.Crawler;
 import org.jbake.app.DBUtil;
 import org.jbake.app.Parser;
+import org.jbake.app.render.ArchiveRenderer;
+import org.jbake.app.render.FeedRenderer;
+import org.jbake.app.render.IndexRenderer;
 import org.jbake.app.render.Renderer;
+import org.jbake.app.render.SiteMapRenderer;
+import org.jbake.app.render.TagsRenderer;
 import org.jbake.model.DocumentTypes;
 import org.jbake.template.ModelExtractorsDocumentTypeListener;
 import org.junit.After;
@@ -210,8 +215,12 @@ public abstract class AbstractTemplateEngineRenderingTest {
 
     @Test
     public void renderIndex() throws Exception {
+        IndexRenderer indexRenderer = new IndexRenderer(db, destinationFolder, templateFolder,
+            config);
+
         //exec
-        renderer.renderIndex("index.html");
+//        renderer.renderIndex("index.html");
+        indexRenderer.renderIndex("index.html");
 
         //validate
         File outputFile = new File(destinationFolder, "index.html");
@@ -226,11 +235,14 @@ public abstract class AbstractTemplateEngineRenderingTest {
 
     @Test
     public void renderFeed() throws Exception {
-        renderer.renderFeed("feed.xml");
-        File outputFile = new File(destinationFolder, "feed.xml");
-        Assert.assertTrue(outputFile.exists());
+        FeedRenderer feedRenderer = new FeedRenderer(db, destinationFolder, templateFolder, config);
+
+//        renderer.renderFeed("feed.xml");
+        feedRenderer.renderFeed("feed.xml");
 
         // verify
+        File outputFile = new File(destinationFolder, "feed.xml");
+        Assert.assertTrue(outputFile.exists());
         String output = FileUtils.readFileToString(outputFile, Charset.defaultCharset());
         for (String string : getOutputStrings("feed")) {
             assertThat(output).contains(string);
@@ -239,11 +251,15 @@ public abstract class AbstractTemplateEngineRenderingTest {
 
     @Test
     public void renderArchive() throws Exception {
-        renderer.renderArchive("archive.html");
-        File outputFile = new File(destinationFolder, "archive.html");
-        Assert.assertTrue(outputFile.exists());
+        ArchiveRenderer archiveRenderer = new ArchiveRenderer(db, destinationFolder,
+            templateFolder, config);
+
+//        renderer.renderArchive("archive.html");
+        archiveRenderer.renderArchive("archive.html");
 
         // verify
+        File outputFile = new File(destinationFolder, "archive.html");
+        Assert.assertTrue(outputFile.exists());
         String output = FileUtils.readFileToString(outputFile, Charset.defaultCharset());
         for (String string : getOutputStrings("archive")) {
             assertThat(output).contains(string);
@@ -252,7 +268,10 @@ public abstract class AbstractTemplateEngineRenderingTest {
 
     @Test
     public void renderTags() throws Exception {
-        renderer.renderTags( "tags");
+        TagsRenderer tagsRenderer = new TagsRenderer(db, destinationFolder, templateFolder, config);
+
+//        renderer.renderTags( "tags");
+        tagsRenderer.renderTags( "tags");
 
         // verify
         File outputFile = new File(destinationFolder + File.separator + "tags" + File.separator + "blog.html");
@@ -265,14 +284,17 @@ public abstract class AbstractTemplateEngineRenderingTest {
 
     @Test
     public void renderSitemap() throws Exception {
+        SiteMapRenderer siteMapRenderer = new SiteMapRenderer(db, destinationFolder,
+            templateFolder, config);
         DocumentTypes.addDocumentType("paper");
         DBUtil.updateSchema(db);
 
-        renderer.renderSitemap("sitemap.xml");
-        File outputFile = new File(destinationFolder, "sitemap.xml");
-        Assert.assertTrue(outputFile.exists());
+//        renderer.renderSitemap("sitemap.xml");
+        siteMapRenderer.renderSitemap("sitemap.xml");
 
         // verify
+        File outputFile = new File(destinationFolder, "sitemap.xml");
+        Assert.assertTrue(outputFile.exists());
         String output = FileUtils.readFileToString(outputFile, Charset.defaultCharset());
         for (String string : getOutputStrings("sitemap")) {
             assertThat(output).contains(string);

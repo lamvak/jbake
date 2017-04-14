@@ -25,6 +25,7 @@ package org.jbake.app.template;
 
 import org.apache.commons.io.FileUtils;
 import org.jbake.app.ConfigUtil.Keys;
+import org.jbake.app.render.IndexRenderer;
 import org.junit.Test;
 
 import java.io.File;
@@ -46,6 +47,8 @@ public class FreemarkerTemplateEngineRenderingTest extends AbstractTemplateEngin
 
     @Test
     public void renderPaginatedIndex() throws Exception {
+        org.jbake.app.render.IndexRenderer indexRenderer = new org.jbake.app.render.IndexRenderer
+            (db, destinationFolder, templateFolder, config);
         config.setProperty(Keys.PAGINATE_INDEX, true);
         config.setProperty(Keys.POSTS_PER_PAGE, 1);
 
@@ -55,7 +58,8 @@ public class FreemarkerTemplateEngineRenderingTest extends AbstractTemplateEngin
                 "2 of 3"
         ));
 
-        renderer.renderIndexPaging("index.html");
+//        renderer.renderIndexPaging("index.html");
+        indexRenderer.renderIndexPaging("index.html");
 
         File outputFile = new File(destinationFolder, "index2.html");
         String output = FileUtils.readFileToString(outputFile, Charset.defaultCharset());
@@ -67,12 +71,15 @@ public class FreemarkerTemplateEngineRenderingTest extends AbstractTemplateEngin
 
     @Test
     public void shouldFallbackToRenderSingleIndexIfNoPostArePresent() throws Exception {
+        IndexRenderer indexRenderer = new IndexRenderer(db, destinationFolder, templateFolder,
+            config);
         config.setProperty(Keys.PAGINATE_INDEX, true);
         config.setProperty(Keys.POSTS_PER_PAGE, 1);
 
         db.deleteAllByDocType("post");
 
-        renderer.renderIndexPaging("index.html");
+//        renderer.renderIndexPaging("index.html");
+        indexRenderer.renderIndexPaging("index.html");
 
         File paginatedFile = new File(destinationFolder, "index2.html");
         assertFalse("paginated file is not rendered",paginatedFile.exists());

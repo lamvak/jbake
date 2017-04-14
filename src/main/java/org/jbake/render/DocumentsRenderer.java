@@ -1,13 +1,12 @@
 package org.jbake.render;
 
 import org.apache.commons.configuration.CompositeConfiguration;
-import org.jbake.app.ContentStore;
 import org.jbake.app.DocumentList;
 import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.model.DocumentTypes;
 import org.jbake.template.RenderingException;
 
-import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -15,11 +14,12 @@ import java.util.Map;
 public class DocumentsRenderer implements RenderingTool {
 
     @Override
-    public int render(Renderer renderer, ContentStore db, File destination, File templatesPath, CompositeConfiguration config) throws RenderingException {
+    public int render(RendererFactory factory, CompositeConfiguration config) throws RenderingException {
+        Renderer renderer = factory.defaultRenderer();
         int renderedCount = 0;
-        final List<String> errors = new LinkedList<String>();
+        final List<String> errors = new LinkedList<>();
         for (String docType : DocumentTypes.getDocumentTypes()) {
-            DocumentList documentList = db.getUnrenderedContent(docType);
+            DocumentList documentList = renderer.getDb().getUnrenderedContent(docType);
             for (Map<String, Object> page : documentList) {
                 try {
                     renderer.render(page);

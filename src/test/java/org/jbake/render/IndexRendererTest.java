@@ -2,9 +2,10 @@ package org.jbake.render;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ContentStore;
-import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.render.support.MockCompositeConfiguration;
 import org.jbake.template.RenderingException;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -17,82 +18,56 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class IndexRendererTest {
+    private IndexRenderer renderer;
+    private CompositeConfiguration configuration;
+    private ContentStore contentStore;
+    private org.jbake.app.render.IndexRenderer mockIndexRenderer;
+    private RendererFactory mockFactory;
 
     @Test
     public void returnsZeroWhenConfigDoesNotRenderIndices() throws RenderingException {
-        IndexRenderer renderer = new IndexRenderer();
-
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
-
-        Renderer mockRenderer = mock(Renderer.class);
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+        int renderResponse = renderer.render(mockFactory, configuration);
 
         assertThat(renderResponse).isEqualTo(0);
     }
 
     @Test
     public void doesNotRenderWhenConfigDoesNotRenderIndices() throws Exception {
-        IndexRenderer renderer = new IndexRenderer();
+        renderer.render(mockFactory, configuration);
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, never()).renderIndex(anyString());
+        verify(mockIndexRenderer, never()).renderIndex(anyString());
     }
 
     @Test
     public void returnsOneWhenConfigRendersIndices() throws RenderingException {
-        IndexRenderer renderer = new IndexRenderer();
+        setupConfigWithDefaultTrueBoolean();
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-
-        Renderer mockRenderer = mock(Renderer.class);
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+        int renderResponse = renderer.render(mockFactory, configuration);
 
         assertThat(renderResponse).isEqualTo(1);
     }
 
     @Test
     public void doesRenderWhenConfigDoesNotRenderIndices() throws Exception {
-        IndexRenderer renderer = new IndexRenderer();
+        setupNoPaginationConfigWithDefaultTrueBoolean();
 
-        MockCompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        compositeConfiguration.setProperty(PAGINATE_INDEX, false);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+        renderer.render(mockFactory, configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, times(1)).renderIndex("random string");
+        verify(mockIndexRenderer, times(1)).renderIndex("random string");
     }
 
     @Test(expected = RenderingException.class)
     public void propagatesRenderingException() throws Exception {
-        IndexRenderer renderer = new IndexRenderer();
+        setupNoPaginationConfigWithDefaultTrueBoolean();
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        compositeConfiguration.setProperty(PAGINATE_INDEX, false);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+        doThrow(new Exception()).when(mockIndexRenderer).renderIndex(anyString());
 
-        doThrow(new Exception()).when(mockRenderer).renderIndex(anyString());
+        renderer.render(mockFactory, configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, never()).renderIndex("random string");
+        verify(mockIndexRenderer, never()).renderIndex("random string");
     }
 
 
@@ -101,18 +76,38 @@ public class IndexRendererTest {
      */
     @Test
     public void shouldFallbackToStandardIndexRenderingIfPropertyIsMissing() throws Exception {
-        IndexRenderer renderer = new IndexRenderer();
+        setupConfigWithDefaultTrueBoolean();
 
-        MockCompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+        renderer.render(mockFactory, configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, times(1)).renderIndex("random string");
+        verify(mockIndexRenderer, times(1)).renderIndex("random string");
     }
 
+    @Before
+    public void setup() {
+        renderer = new IndexRenderer();
+        mockIndexRenderer = mock(org.jbake.app.render.IndexRenderer.class);
+        when(mockIndexRenderer.getDestination()).thenReturn(new File("fake"));
+
+        configuration = new MockCompositeConfiguration().withDefaultBoolean(false);
+        when(mockIndexRenderer.getConfig()).thenReturn(configuration);
+
+        contentStore = mock(ContentStore.class);
+        when(mockIndexRenderer.getDb()).thenReturn(contentStore);
+
+
+        mockFactory = mock(RendererFactory.class);
+        when(mockFactory.indexRenderer()).thenReturn(mockIndexRenderer);
+    }
+
+    private void setupNoPaginationConfigWithDefaultTrueBoolean() {
+        configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+        configuration.setProperty(PAGINATE_INDEX, false);
+        when(mockIndexRenderer.getConfig()).thenReturn(configuration);
+    }
+
+    private void setupConfigWithDefaultTrueBoolean() {
+        configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+        when(mockIndexRenderer.getConfig()).thenReturn(configuration);
+    }
 }
-
-

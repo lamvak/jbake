@@ -1,14 +1,9 @@
 package org.jbake.render;
 
-import java.io.File;
-
 import org.apache.commons.configuration.CompositeConfiguration;
-import org.jbake.app.ContentStore;
-import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.template.RenderingException;
 
 public interface RenderingTool {
-
-	int render(Renderer renderer, ContentStore db, File destination, File templatesPath, CompositeConfiguration config) throws RenderingException;
-
+	int render(RendererFactory renderer, CompositeConfiguration config) throws RenderingException;
 }

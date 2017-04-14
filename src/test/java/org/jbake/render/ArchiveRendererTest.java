@@ -2,91 +2,89 @@ package org.jbake.render;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ContentStore;
-import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.render.support.MockCompositeConfiguration;
 import org.jbake.template.RenderingException;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class ArchiveRendererTest {
+    private ArchiveRenderer renderer;
+    private CompositeConfiguration configuration;
+    private ContentStore contentStore;
+    private org.jbake.app.render.ArchiveRenderer mockArchiveRenderer;
+    private RendererFactory mockFactory;
 
     @Test
     public void returnsZeroWhenConfigDoesNotRenderArchives() throws RenderingException {
-        ArchiveRenderer renderer = new ArchiveRenderer();
-
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
-
-        Renderer mockRenderer = mock(Renderer.class);
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+        int renderResponse = renderer.render(mockFactory, configuration);
 
         assertThat(renderResponse).isEqualTo(0);
     }
 
     @Test
     public void doesNotRenderWhenConfigDoesNotRenderArchives() throws Exception {
-        ArchiveRenderer renderer = new ArchiveRenderer();
+        renderer.render(mockFactory, configuration);
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(false);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, never()).renderArchive(anyString());
+        verify(mockArchiveRenderer, never()).renderArchive(anyString());
     }
 
     @Test
     public void returnsOneWhenConfigRendersArchives() throws RenderingException {
-        ArchiveRenderer renderer = new ArchiveRenderer();
+        setupConfigurationWithTrueDefaultBoolean();
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-
-        Renderer mockRenderer = mock(Renderer.class);
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
+        int renderResponse = renderer.render(mockFactory, configuration);
 
         assertThat(renderResponse).isEqualTo(1);
     }
 
     @Test
     public void doesRenderWhenConfigDoesNotRenderArchives() throws Exception {
-        ArchiveRenderer renderer = new ArchiveRenderer();
+        setupConfigurationWithTrueDefaultBoolean();
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+        renderer.render(mockFactory, configuration);
 
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, times(1)).renderArchive("random string");
+        verify(mockArchiveRenderer, times(1)).renderArchive("random string");
     }
 
     @Test(expected = RenderingException.class)
     public void propogatesRenderingException() throws Exception {
-        ArchiveRenderer renderer = new ArchiveRenderer();
+        setupConfigurationWithTrueDefaultBoolean();
+        doThrow(new Exception()).when(mockArchiveRenderer).renderArchive(anyString());
 
-        CompositeConfiguration compositeConfiguration = new MockCompositeConfiguration().withDefaultBoolean(true);
-        ContentStore contentStore = mock(ContentStore.class);
-        Renderer mockRenderer = mock(Renderer.class);
+        renderer.render(mockFactory, configuration);
 
-        doThrow(new Exception()).when(mockRenderer).renderArchive(anyString());
-
-        int renderResponse = renderer.render(mockRenderer, contentStore,
-                new File("fake"), new File("fake"), compositeConfiguration);
-
-        verify(mockRenderer, never()).renderArchive("random string");
+        verify(mockArchiveRenderer, never()).renderArchive("random string");
     }
 
+    @Before
+    public void setup() {
+        renderer = new ArchiveRenderer();
+        mockArchiveRenderer = mock(org.jbake.app.render.ArchiveRenderer.class);
+
+        configuration = new MockCompositeConfiguration().withDefaultBoolean(false);
+        when(mockArchiveRenderer.getConfig()).thenReturn(configuration);
+
+        contentStore = mock(ContentStore.class);
+        when(mockArchiveRenderer.getDb()).thenReturn(contentStore);
+
+        mockFactory = mock(RendererFactory.class);
+        when(mockFactory.archiveRenderer()).thenReturn(mockArchiveRenderer);
+    }
+
+    private void setupConfigurationWithTrueDefaultBoolean() {
+        configuration = new MockCompositeConfiguration().withDefaultBoolean(true);
+        when(mockArchiveRenderer.getConfig()).thenReturn(configuration);
+    }
 }
 
 

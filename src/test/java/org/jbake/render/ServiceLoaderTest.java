@@ -13,10 +13,8 @@ import java.util.ServiceLoader;
 import static org.junit.Assert.assertTrue;
 
 public class ServiceLoaderTest {
-
     @Test
     public void testLoadRenderer() throws Exception {
-
         URL serviceDescription = ClassLoader.getSystemClassLoader().getResource("META-INF/services/org.jbake.render.RenderingTool");
         File services = new File(serviceDescription.toURI());
         assertTrue("Service definitions File exists", services.exists());

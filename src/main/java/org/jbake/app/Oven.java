@@ -3,7 +3,7 @@ package org.jbake.app;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.jbake.app.ConfigUtil.Keys;
 import org.jbake.app.asset.Asset;
-import org.jbake.app.render.Renderer;
+import org.jbake.app.render.RendererFactory;
 import org.jbake.model.DocumentAttributes;
 import org.jbake.model.DocumentTypes;
 import org.jbake.render.RenderingTool;
@@ -146,11 +146,11 @@ public class Oven {
             		}
                 }
 
-                Renderer renderer = new Renderer(db, destination, templatesPath, config);
+							RendererFactory factory = new RendererFactory(db, destination, templatesPath, config);
 
                 for(RenderingTool tool : ServiceLoader.load(RenderingTool.class)) {
                 	try {
-                		renderedCount += tool.render(renderer, db, destination, templatesPath, config);
+                		renderedCount += tool.render(factory, config);
                 	} catch(RenderingException e) {
                 		errors.add(e);
                 	}
